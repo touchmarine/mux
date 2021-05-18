@@ -1,0 +1,47 @@
+= Mux
+
+Package mux is a stripped-down http.ServeMux with a few select extras like
+regular expression patterns and mounting.
+                                                                             
+mux supports only http.HandlerFunc, http.Handler is not supported.
+Non-regexp handler pattern must begin with a slash "/" and must not end with
+a slash "/".
+Requests with a trailing slash are redirected to the slash-less version.
+
++ Basic example
+``go
+m := mux.New(http.NotFound)
+m.HandleFunc("/hello", func(w http.ResponseWriter, r *http.Request) {
+	io.WriteString(w, "hello")
+})
+http.ListenAndServe(":8080", m)
+``
+
++ Regular expression patterns
+``go
+m := mux.New(http.NotFound)
+m.RegexpHandleFunc(`/users/(?P<id>[0-9]+)$`, func(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.Atoi(r.Context().Value("id").(string))
+	if err != nil {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		return
+	}
+
+	fmt.Fprintf(w, "id=%d", id)
+
+	// ...
+})
+``
+
++ Mount
+``go
+mu := mux.New(http.NotFound)
+mu.HandleFunc("/report", func(w http.ResponseWriter, r *http.Request) {
+	io.WriteString(w, "user report")
+})
+
+m := mux.New(http.NotFound)
+m.Mount("/users", mu)
+
+http.ListenAndServe(":8080", m)
+``
