@@ -43,7 +43,14 @@ func New(notFound http.HandlerFunc) *Mux {
 // Mount submux into mux with prefix added to submux's patterns.
 func (mux *Mux) Mount(prefix string, submux *Mux) {
 	for pattern, e := range submux.m {
-		mux.HandleFunc(prefix+pattern, e.handler)
+		var p string
+		if prefix != "" && pattern == "/" {
+			p = prefix
+		} else {
+			p = prefix + pattern
+		}
+
+		mux.register(p, e.handler, e.regexp)
 	}
 }
 

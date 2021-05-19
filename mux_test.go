@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strconv"
+	"strings"
 	"testing"
 )
 
@@ -426,40 +427,57 @@ func TestRegexpHandleFunc(t *testing.T) {
 
 func TestMount(t *testing.T) {
 	t.Run("green", func(t *testing.T) {
-		h1 := handlerFactory(http.StatusTeapot, "/a")
-		m1 := mux.New(http.NotFound)
-		m1.HandleFunc("/a", h1)
-
-		h2 := handlerFactory(http.StatusTeapot, "/b")
-		m2 := mux.New(http.NotFound)
-		m2.HandleFunc("/b", h2)
-
-		m1.Mount("", m2)
-
-		paths := []string{
-			"/a",
-			"/b",
+		cases := []struct {
+			pattern1 string
+			pattern2 string
+			paths    []string
+		}{
+			{
+				"/",
+				"/a",
+				[]string{"/", "/a"},
+			},
+			{
+				"/a",
+				"/b",
+				[]string{"/a", "/b"},
+			},
 		}
 
-		for _, path := range paths {
-			t.Run(path, func(t *testing.T) {
-				r := httptest.NewRequest(http.MethodGet, path, nil)
-				rec := httptest.NewRecorder()
-				m1.ServeHTTP(rec, r)
-				resp := rec.Result()
+		for _, c := range cases {
+			name := strings.Join(c.paths, ", ")
+			t.Run(name, func(t *testing.T) {
+				h1 := handlerFactory(http.StatusTeapot, c.pattern1)
+				m1 := mux.New(http.NotFound)
+				m1.HandleFunc(c.pattern1, h1)
 
-				if resp.StatusCode != http.StatusTeapot {
-					t.Errorf("got StatusCode %d, want %d", resp.StatusCode, http.StatusTeapot)
-				}
+				h2 := handlerFactory(http.StatusTeapot, c.pattern2)
+				m2 := mux.New(http.NotFound)
+				m2.HandleFunc(c.pattern2, h2)
 
-				b, err := ioutil.ReadAll(resp.Body)
-				if err != nil {
-					t.Fatal(err)
-				}
+				m1.Mount("", m2)
 
-				body := string(b)
-				if body != path {
-					t.Errorf("got body %q, want %q", body, path)
+				for _, path := range c.paths {
+					t.Run(path, func(t *testing.T) {
+						r := httptest.NewRequest(http.MethodGet, path, nil)
+						rec := httptest.NewRecorder()
+						m1.ServeHTTP(rec, r)
+						resp := rec.Result()
+
+						if resp.StatusCode != http.StatusTeapot {
+							t.Errorf("got StatusCode %d, want %d", resp.StatusCode, http.StatusTeapot)
+						}
+
+						b, err := ioutil.ReadAll(resp.Body)
+						if err != nil {
+							t.Fatal(err)
+						}
+
+						body := string(b)
+						if body != path {
+							t.Errorf("got body %q, want %q", body, path)
+						}
+					})
 				}
 			})
 		}
@@ -524,5 +542,85 @@ func TestMount(t *testing.T) {
 		m2.HandleFunc("/a", h2)
 
 		m1.Mount("", m2)
+	})
+
+	t.Run("regexp", func(t *testing.T) {
+		m0 := mux.New(http.NotFound)
+
+		h1 := handlerFactory(http.StatusTeapot, "/a/1")
+		m1 := mux.New(http.NotFound)
+		m1.RegexpHandleFunc("/(?P<id>[0-9])", h1)
+
+		h2 := handlerFactory(http.StatusTeapot, "/b/2")
+		m2 := mux.New(http.NotFound)
+		m2.RegexpHandleFunc("/(?P<id>[0-9])", h2)
+
+		m0.Mount("/a", m1)
+		m0.Mount("/b", m2)
+
+		paths := []string{
+			"/a/1",
+			"/b/2",
+		}
+
+		for _, path := range paths {
+			t.Run(path, func(t *testing.T) {
+				r := httptest.NewRequest(http.MethodGet, path, nil)
+				rec := httptest.NewRecorder()
+				m0.ServeHTTP(rec, r)
+				resp := rec.Result()
+
+				if resp.StatusCode != http.StatusTeapot {
+					t.Errorf("got StatusCode %d, want %d", resp.StatusCode, http.StatusTeapot)
+				}
+
+				b, err := ioutil.ReadAll(resp.Body)
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				body := string(b)
+				if body != path {
+					t.Errorf("got body %q, want %q", body, path)
+				}
+			})
+		}
+	})
+
+	t.Run("prefix+slash", func(t *testing.T) {
+		m := mux.New(http.NotFound)
+
+		h1 := handlerFactory(http.StatusTeapot, "/a")
+		m1 := mux.New(http.NotFound)
+		m1.HandleFunc("/", h1)
+
+		m.Mount("/a", m1)
+
+		paths := []string{
+			"/a",
+		}
+
+		for _, path := range paths {
+			t.Run(path, func(t *testing.T) {
+				r := httptest.NewRequest(http.MethodGet, path, nil)
+				rec := httptest.NewRecorder()
+				m.ServeHTTP(rec, r)
+				resp := rec.Result()
+
+				if resp.StatusCode != http.StatusTeapot {
+					t.Errorf("got StatusCode %d, want %d", resp.StatusCode, http.StatusTeapot)
+				}
+
+				b, err := ioutil.ReadAll(resp.Body)
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				body := string(b)
+				if body != path {
+					t.Errorf("got body %q, want %q", body, path)
+				}
+			})
+		}
 	})
 }
