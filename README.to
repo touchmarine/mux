@@ -3,12 +3,15 @@
 Package mux is a stripped-down http.ServeMux with a few select extras like
 regular expression patterns and mounting.
                                                                              
-mux supports only http.HandlerFunc, http.Handler is not supported.
-Non-regexp handler pattern must begin with a slash "/" and must not end with
-a slash "/".
-Requests with a trailing slash are redirected to the slash-less version.
+- mux supports only http.HandlerFunc, http.Handler is not supported
+- non-regexp handler pattern must begin with a slash "/" and must not end with
+  a slash "/"
+- requests with a trailing slash are redirected to the slash-less version
+- mux is case-sensitive; for case-insensitive matching, look at the case-insensitive example
 
-+ Basic example
+## Examples
+
++ Basic
 ``go
 m := mux.New(http.NotFound)
 m.HandleFunc("/hello", func(w http.ResponseWriter, r *http.Request) {
@@ -44,4 +47,21 @@ m := mux.New(http.NotFound)
 m.Mount("/users", mu)
 
 http.ListenAndServe(":8080", m)
+``
+
++ Case-insensitive
+``go
+func caseInsensitive(handler http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		r.URL.Path = strings.ToLower(r.URL.Path)
+		handler.ServeHTTP(w, r)		
+	}
+}
+
+m := mux.New(http.NotFound)
+m.HandleFunc("/hello", func(w http.ResponseWriter, r *http.Request) {
+	io.WriteString(w, "hello")
+})
+
+http.ListenAndServe(":8080", caseInsensitive(m))
 ``

@@ -137,6 +137,11 @@ func TestHandleFunc(t *testing.T) {
 				[]string{"/a/b", "/a/b/c"},
 				"/a/b/c",
 			},
+
+			{
+				[]string{"/A"},
+				"/A",
+			},
 		}
 
 		for _, c := range cases {
@@ -299,6 +304,12 @@ func TestRegexpHandleFunc(t *testing.T) {
 			{
 				[]string{"^/a$"},
 				"/a",
+				"<nil>",
+			},
+
+			{
+				[]string{"/A"},
+				"/A",
 				"<nil>",
 			},
 		}

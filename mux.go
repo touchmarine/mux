@@ -12,9 +12,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
-	"strings"
 	"sync"
-	"unicode"
 )
 
 // Mux is an HTTP request multiplexer.
@@ -117,15 +115,6 @@ func (mux *Mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// CONNECT requests are not canonicalized.
-		if r.Method != http.MethodConnect {
-			if !isLower(r.URL.Path) {
-				lowerURL := strings.ToLower(r.URL.String())
-				http.Redirect(w, r, lowerURL, http.StatusPermanentRedirect)
-				return
-			}
-		}
-
 		if e.regexp {
 			re := regexp.MustCompile(pattern)
 			if re.MatchString(r.URL.Path) {
@@ -154,16 +143,6 @@ func urlWithoutSlash(path, pattern string, u *url.URL) (*url.URL, bool) {
 		return u, true
 	}
 	return u, false
-}
-
-// isLower determines if s is lower case.
-func isLower(s string) bool {
-	for _, r := range s {
-		if unicode.IsLetter(r) && !unicode.IsLower(r) {
-			return false
-		}
-	}
-	return true
 }
 
 // addRegexpSubmatchesToContext adds regexp submatches from the provided re to
